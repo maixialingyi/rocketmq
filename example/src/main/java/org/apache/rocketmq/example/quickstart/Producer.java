@@ -33,16 +33,10 @@ public class Producer {
          */
         DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
 
-        /*
-         * Specify name server addresses.
-         * <p/>
-         *
-         * Alternatively, you may specify name server addresses via exporting environmental variable: NAMESRV_ADDR
-         * <pre>
-         * {@code
-         * producer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");
-         * }
-         * </pre>
+        /**
+         * 通过代码指定名称服务器地址。producer.setNamesrvAddr("name-server1-ip:9876;name-server2-ip:9876");
+         * 或者，您可以通过导出环境变量NAMESRV_ADDR来指定名称服务器地址
+         * 采用配置环境变量方式
          */
         producer.setNamesrvAddr("127.0.0.1:9876");
         /*
