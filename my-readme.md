@@ -22,8 +22,13 @@ pull拉模式   org.apache.rocketmq.example.simple.LitePullConsumer
             开源版本只支持 1S后 3S后等18个时长, 不支持任意时间点设置                如果用开源这是个改造点
 批量消息     org.apache.rocketmq.example.batch   消息大小有限制1M,同topic,不能是延时/事务消息
 过滤消息     org.apache.rocketmq.example.filter    tag / sql 两种, 由broker过滤
-事务消息     回查时间,次数可配置
+事务消息     回查时间,次数可配置  messageId 不同
 权限        docs/cn/acl
-消息轨迹
+
+springboot集成  https://github.com/apache/rocketmq-spring  使用时注意版本
+spring cloud stream  适配所有mq
+
+
+
 
 
