@@ -33,17 +33,25 @@ public class Producer {
     public static void main(String[] args) throws UnsupportedEncodingException {
         try {
             DefaultMQProducer producer = new DefaultMQProducer("please_rename_unique_group_name");
+            producer.setNamesrvAddr("127.0.0.1:9876");
             producer.start();
 
-            String[] tags = new String[] {"TagA", "TagB", "TagC", "TagD", "TagE"};
+            /*String[] tags = new String[] {"TagA", "TagB", "TagC", "TagD", "TagE"};
             for (int i = 0; i < 100; i++) {
                 int orderId = i % 10;
                 Message msg =
                     new Message("TopicTestjjj", tags[i % tags.length], "KEY" + i,
                         ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET));
+                // 发送自定义条件的消息到topic下指定队列
                 SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
+                    *//**
+                     * @param mqs topic下所有队列
+                     * @param msg 消息
+                     * @param arg 条件参数
+                     *//*
                     @Override
                     public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {
+                        // 相同订单orderId的消息放入相同的队列
                         Integer id = (Integer) arg;
                         int index = id % mqs.size();
                         return mqs.get(index);
@@ -53,9 +61,48 @@ public class Producer {
                 System.out.printf("%s%n", sendResult);
             }
 
-            producer.shutdown();
+            producer.shutdown();*/
+            for(int i=0;i<10;i++){   //i个订单
+                int orderId  = i;
+                for(int j=0;j<5;j++){  // 每个订单5个mq 顺序发到同一个队列
+                    Message msg =
+                            new Message("OrderTopicTest", "order_"+orderId, "KEY" + orderId,
+                                    ("order_" + orderId + "step "+j).getBytes(RemotingHelper.DEFAULT_CHARSET));
+                    // 发送自定义条件的消息到topic下指定队列
+                    SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
+                        @Override
+                        public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {
+                            // 相同订单orderId的消息放入相同的队列
+                            Integer id = (Integer) arg;
+                            int index = id % mqs.size();
+                            return mqs.get(index);
+                        }
+                    }, orderId);
+                    System.out.printf("%s%n", sendResult);
+                }
+            }
+
         } catch (MQClientException | RemotingException | MQBrokerException | InterruptedException e) {
             e.printStackTrace();
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
