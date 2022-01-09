@@ -64,11 +64,13 @@ public class Producer {
             producer.shutdown();*/
             for(int i=0;i<10;i++){   //i个订单
                 int orderId  = i;
-                for(int j=0;j<5;j++){  // 每个订单5个mq 顺序发到同一个队列
+                for(int j=0;j<=5;j++){  // 每个订单5个mq 顺序发到同一个队列
                     Message msg =
                             new Message("OrderTopicTest", "order_"+orderId, "KEY" + orderId,
                                     ("order_" + orderId + "step "+j).getBytes(RemotingHelper.DEFAULT_CHARSET));
-                    // 发送自定义条件的消息到topic下指定队列
+                    /**
+                     * MessageQueueSelector 对垒选择器
+                     */
                     SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
                         @Override
                         public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {

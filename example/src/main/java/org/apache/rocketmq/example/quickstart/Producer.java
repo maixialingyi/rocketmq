@@ -54,7 +54,7 @@ public class Producer {
                     "TagA" /* Tag */,
                     ("Hello RocketMQ " + i).getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
                 );
-
+                // msg.setDelayTimeLevel();  设置延时  开源版本只支持 1S 3S等18个时长, 不支持时间设置
                 /*
                  * Call send message to deliver message to one of brokers.
                  */
