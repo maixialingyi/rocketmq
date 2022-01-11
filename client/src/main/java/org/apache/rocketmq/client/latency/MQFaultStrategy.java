@@ -54,16 +54,19 @@ public class MQFaultStrategy {
     public void setSendLatencyFaultEnable(final boolean sendLatencyFaultEnable) {
         this.sendLatencyFaultEnable = sendLatencyFaultEnable;
     }
-
+    //producer选择MessageQueue
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
+        //默认关闭,broker故障延迟机制,表示一种发送消息失败后一定时间内不在同一个Queue重复发送的机制
         if (this.sendLatencyFaultEnable) {
             try {
+                //算法: 自增 后取模  只有这一种算法
                 int index = tpInfo.getSendWhichQueue().incrementAndGet();
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
                     int pos = Math.abs(index++) % tpInfo.getMessageQueueList().size();
                     if (pos < 0)
                         pos = 0;
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    //broker轮训,尽量将请求平均分配给不同的broker  失败后跳过失败的queue
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName()))
                         return mq;
                 }

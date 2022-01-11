@@ -220,7 +220,7 @@ public class MQClientInstance {
 
         return mqList;
     }
-
+    // 消费者核心启动过程   生产端和消费端都是从这里启动的
     public void start() throws MQClientException {
 
         synchronized (this) {
@@ -238,6 +238,7 @@ public class MQClientInstance {
                     // Start pull service
                     this.pullMessageService.start();
                     // Start rebalance service
+                    // 消费端负载均衡,消费端启动就分配了Queue      生产端负载均衡是发送时才做的
                     this.rebalanceService.start();
                     // Start push service
                     this.defaultMQProducer.getDefaultMQProducerImpl().start(false);

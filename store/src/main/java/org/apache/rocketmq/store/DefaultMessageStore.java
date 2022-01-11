@@ -432,6 +432,7 @@ public class DefaultMessageStore implements MessageStore {
         }
 
         long beginTime = this.getSystemClock().now();
+        //写
         CompletableFuture<PutMessageResult> putResultFuture = this.commitLog.asyncPutMessage(msg);
 
         putResultFuture.thenAccept((result) -> {
@@ -479,6 +480,7 @@ public class DefaultMessageStore implements MessageStore {
         return resultFuture;
     }
 
+    // 消息存储入口
     @Override
     public PutMessageResult putMessage(MessageExtBrokerInner msg) {
         try {
