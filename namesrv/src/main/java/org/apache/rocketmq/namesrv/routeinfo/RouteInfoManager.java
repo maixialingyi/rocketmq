@@ -439,11 +439,14 @@ public class RouteInfoManager {
         return null;
     }
 
+    // 扫描不活动broker
     public void scanNotActiveBroker() {
+        //HashMap
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {
             Entry<String, BrokerLiveInfo> next = it.next();
             long last = next.getValue().getLastUpdateTimestamp();
+            // 最后心跳修改时间 + 过期时间2分钟
             if ((last + BROKER_CHANNEL_EXPIRED_TIME) < System.currentTimeMillis()) {
                 RemotingUtil.closeChannel(next.getValue().getChannel());
                 it.remove();

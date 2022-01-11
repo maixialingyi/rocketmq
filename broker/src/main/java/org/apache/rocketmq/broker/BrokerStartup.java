@@ -106,10 +106,10 @@ public class BrokerStartup {
             if (null == commandLine) {
                 System.exit(-1);
             }
-
+            // broker 配置信息
             final BrokerConfig brokerConfig = new BrokerConfig();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
-            final NettyClientConfig nettyClientConfig = new NettyClientConfig();
+            final NettyClientConfig nettyClientConfig = new NettyClientConfig(); //用于事务消息回调
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
@@ -147,6 +147,7 @@ public class BrokerStartup {
                 System.exit(-2);
             }
 
+            // name server 地址
             String namesrvAddr = brokerConfig.getNamesrvAddr();
             if (null != namesrvAddr) {
                 try {
@@ -162,6 +163,7 @@ public class BrokerStartup {
                 }
             }
 
+            // 通过brokerId判断主从   master brokerId = 0 slave brokerId > 0
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
@@ -177,7 +179,8 @@ public class BrokerStartup {
                 default:
                     break;
             }
-
+            // 判断是否基于Dledger技术来管理主从同步和CommitLog的条件就是brokerId设置为-1
+            // DLedger 就是一个基于 raft 协议的 commitlog 存储库，也是 RocketMQ 实现新的高可用多副本架构的关键
             if (messageStoreConfig.isEnableDLegerCommitLog()) {
                 brokerConfig.setBrokerId(-1);
             }
@@ -211,6 +214,7 @@ public class BrokerStartup {
             MixAll.printObjectProperties(log, nettyClientConfig);
             MixAll.printObjectProperties(log, messageStoreConfig);
 
+            // 核心配置信息
             final BrokerController controller = new BrokerController(
                 brokerConfig,
                 nettyServerConfig,
@@ -218,7 +222,7 @@ public class BrokerStartup {
                 messageStoreConfig);
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
-
+            // 初始化 注意从中理清楚 broker的组件结构
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();
