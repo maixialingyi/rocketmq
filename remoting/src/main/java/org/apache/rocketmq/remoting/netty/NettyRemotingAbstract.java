@@ -150,14 +150,17 @@ public abstract class NettyRemotingAbstract {
      * @param msg incoming remoting command.
      * @throws Exception if there were any error while processing the incoming command.
      */
+    /**
+     * rocket 自定义协议  把字节流 转为 RemotingCommand  即需编解码 pipeline().addLoast(new NettyEncoder(), now NettyDecoder() )
+     */
     public void processMessageReceived(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
-                case REQUEST_COMMAND:
+                case REQUEST_COMMAND:     // 处理请求
                     processRequestCommand(ctx, cmd);
                     break;
-                case RESPONSE_COMMAND:
+                case RESPONSE_COMMAND:    // 处理响应
                     processResponseCommand(ctx, cmd);
                     break;
                 default:
@@ -185,7 +188,7 @@ public abstract class NettyRemotingAbstract {
 
     /**
      * Process incoming request command issued by remote peer.
-     *
+     * 接收请求
      * @param ctx channel handler context.
      * @param cmd request command.
      */
@@ -280,8 +283,8 @@ public abstract class NettyRemotingAbstract {
     }
 
     /**
+     * 处理响应
      * Process response from remote peer to the previous issued requests.
-     *
      * @param ctx channel handler context.
      * @param cmd response command instance.
      */
@@ -405,15 +408,18 @@ public abstract class NettyRemotingAbstract {
         }
     }
 
+    // 同步方式
     public RemotingCommand invokeSyncImpl(final Channel channel, final RemotingCommand request,
         final long timeoutMillis)
         throws InterruptedException, RemotingSendRequestException, RemotingTimeoutException {
         final int opaque = request.getOpaque();
 
         try {
+            //1.构造阻塞体future对象，用上面说的请求ID作为key，存入一个map中
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis, null, null);
             this.responseTable.put(opaque, responseFuture);
             final SocketAddress addr = channel.remoteAddress();
+            // 2.发送网络请求
             channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture f) throws Exception {
@@ -423,14 +429,14 @@ public abstract class NettyRemotingAbstract {
                     } else {
                         responseFuture.setSendRequestOK(false);
                     }
-
+                    //4.处理完成或者请求失败后，移除map中的阻塞体对象
                     responseTable.remove(opaque);
                     responseFuture.setCause(f.cause());
                     responseFuture.putResponse(null);
                     log.warn("send a request command to channel <" + addr + "> failed.");
                 }
             });
-
+            // 3.通过阻塞体阻塞等待结果
             RemotingCommand responseCommand = responseFuture.waitResponse(timeoutMillis);
             if (null == responseCommand) {
                 if (responseFuture.isSendRequestOK()) {
@@ -443,10 +449,12 @@ public abstract class NettyRemotingAbstract {
 
             return responseCommand;
         } finally {
+            //4.处理完成或者请求失败后，移除map中的阻塞体对象
             this.responseTable.remove(opaque);
         }
     }
 
+    // 异步方式
     public void invokeAsyncImpl(final Channel channel, final RemotingCommand request, final long timeoutMillis,
         final InvokeCallback invokeCallback)
         throws InterruptedException, RemotingTooMuchRequestException, RemotingTimeoutException, RemotingSendRequestException {

@@ -48,6 +48,7 @@ public abstract class ServiceThread implements Runnable {
             return;
         }
         stopped = false;
+        // getServiceName() = FileWatchService
         this.thread = new Thread(this, getServiceName());
         this.thread.setDaemon(isDaemon);
         this.thread.start();

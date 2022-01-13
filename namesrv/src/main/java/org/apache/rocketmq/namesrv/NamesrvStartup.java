@@ -79,7 +79,7 @@ public class NamesrvStartup {
             return null;
         }
 
-        // todo 核心配置类
+        // todo 初始化核心配置类
         final NamesrvConfig namesrvConfig = new NamesrvConfig();
         final NettyServerConfig nettyServerConfig = new NettyServerConfig();
         nettyServerConfig.setListenPort(9876);

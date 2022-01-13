@@ -67,6 +67,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
     private final ServerBootstrap serverBootstrap;
     private final EventLoopGroup eventLoopGroupSelector;
+    // boosGroup用于轮询并处理selector连接事件,通常1个就够
     private final EventLoopGroup eventLoopGroupBoss;
     private final NettyServerConfig nettyServerConfig;
 
@@ -85,6 +86,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     // sharable handlers
     private HandshakeHandler handshakeHandler;
+    // 编码
     private NettyEncoder encoder;
     private NettyConnectManageHandler connectionManageHandler;
     private NettyServerHandler serverHandler;
@@ -211,8 +213,8 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                         ch.pipeline()
                             .addLast(defaultEventExecutorGroup, HANDSHAKE_HANDLER_NAME, handshakeHandler)
                             .addLast(defaultEventExecutorGroup,
-                                encoder,
-                                new NettyDecoder(),
+                                encoder,                // 编码
+                                new NettyDecoder(),     // 解码
                                 new IdleStateHandler(0, 0, nettyServerConfig.getServerChannelMaxIdleTimeSeconds()),
                                 connectionManageHandler,
                                 serverHandler
@@ -220,6 +222,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     }
                 });
 
+        //netty的内存池
         if (nettyServerConfig.isServerPooledByteBufAllocatorEnable()) {
             childHandler.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         }
@@ -249,6 +252,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         }, 1000 * 3, 1000);
     }
 
+    // 优雅关闭
     @Override
     public void shutdown() {
         try {

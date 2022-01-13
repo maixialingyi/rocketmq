@@ -67,11 +67,12 @@ public class ResponseFuture {
         return diff > this.timeoutMillis;
     }
 
+    // 阻塞
     public RemotingCommand waitResponse(final long timeoutMillis) throws InterruptedException {
         this.countDownLatch.await(timeoutMillis, TimeUnit.MILLISECONDS);
         return this.responseCommand;
     }
-
+    //释放
     public void putResponse(final RemotingCommand responseCommand) {
         this.responseCommand = responseCommand;
         this.countDownLatch.countDown();

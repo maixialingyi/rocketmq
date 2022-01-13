@@ -85,7 +85,7 @@ public class NamesrvController {
 
         this.registerProcessor();
 
-        // todo 定时任务: 每10s扫描一次broker,移除不活跃broker
+        // todo 定时任务: 每10s扫描一次broker,移除心跳超时broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
             @Override
             public void run() {

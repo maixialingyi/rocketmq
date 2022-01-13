@@ -48,6 +48,7 @@ import org.apache.rocketmq.remoting.common.RemotingUtil;
 
 public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+    // 判定broker心跳超时未发送
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
@@ -441,6 +442,12 @@ public class RouteInfoManager {
 
     // 扫描不活动broker
     public void scanNotActiveBroker() {
+        // 查看存储内容
+        HashMap map = this.topicQueueTable;
+        HashMap map1 = this.brokerAddrTable;
+        HashMap map2 = this.clusterAddrTable;
+        HashMap map3 = this.filterServerTable;
+
         //HashMap
         Iterator<Entry<String, BrokerLiveInfo>> it = this.brokerLiveTable.entrySet().iterator();
         while (it.hasNext()) {

@@ -33,6 +33,7 @@ public class BrokerHousekeepingService implements ChannelEventListener {
 
     @Override
     public void onChannelConnect(String remoteAddr, Channel channel) {
+        System.out.println("创建连接---"+remoteAddr);
     }
 
     @Override
