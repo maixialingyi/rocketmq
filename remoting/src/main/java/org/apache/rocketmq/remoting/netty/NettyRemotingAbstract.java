@@ -151,13 +151,13 @@ public abstract class NettyRemotingAbstract {
      * @throws Exception if there were any error while processing the incoming command.
      */
     /**
-     * rocket 自定义协议  把字节流 转为 RemotingCommand  即需编解码 pipeline().addLoast(new NettyEncoder(), now NettyDecoder() )
+     * rocket 自定义协议  把字节流 转为 RemotingCommand
      */
     public void processMessageReceived(ChannelHandlerContext ctx, RemotingCommand msg) throws Exception {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
-                case REQUEST_COMMAND:     // 处理请求
+                case REQUEST_COMMAND:     // 处理请求命令
                     processRequestCommand(ctx, cmd);
                     break;
                 case RESPONSE_COMMAND:    // 处理响应
@@ -382,6 +382,7 @@ public abstract class NettyRemotingAbstract {
     /**
      * <p>
      * This method is periodically invoked to scan and expire deprecated request.
+     * 定期调用此方法以扫描不推荐的请求并使其过期。
      * </p>
      */
     public void scanResponseTable() {

@@ -113,7 +113,7 @@ public class BrokerStartup {
 
             nettyClientConfig.setUseTLS(Boolean.parseBoolean(System.getProperty(TLS_ENABLE,
                 String.valueOf(TlsSystemConfig.tlsMode == TlsMode.ENFORCING))));
-            nettyServerConfig.setListenPort(10911);
+            nettyServerConfig.setListenPort(10911);   //默认监听端口
             final MessageStoreConfig messageStoreConfig = new MessageStoreConfig();
 
             if (BrokerRole.SLAVE == messageStoreConfig.getBrokerRole()) {
@@ -163,7 +163,7 @@ public class BrokerStartup {
                 }
             }
 
-            // 通过brokerId判断主从   master brokerId = 0 slave brokerId > 0
+            // 通过brokerId判断主从   master brokerId = 0  -  slave brokerId > 0
             switch (messageStoreConfig.getBrokerRole()) {
                 case ASYNC_MASTER:
                 case SYNC_MASTER:
@@ -185,6 +185,7 @@ public class BrokerStartup {
                 brokerConfig.setBrokerId(-1);
             }
 
+            //主从同步默认端口10912
             messageStoreConfig.setHaListenPort(nettyServerConfig.getListenPort() + 1);
             LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
             JoranConfigurator configurator = new JoranConfigurator();
@@ -222,7 +223,7 @@ public class BrokerStartup {
                 messageStoreConfig);
             // remember all configs to prevent discard
             controller.getConfiguration().registerConfig(properties);
-            // 初始化 注意从中理清楚 broker的组件结构
+            // todo  初始化 注意从中理清楚 broker的组件结构
             boolean initResult = controller.initialize();
             if (!initResult) {
                 controller.shutdown();

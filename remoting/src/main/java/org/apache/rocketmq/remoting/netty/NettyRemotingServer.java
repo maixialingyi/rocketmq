@@ -67,7 +67,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
     private static final InternalLogger log = InternalLoggerFactory.getLogger(RemotingHelper.ROCKETMQ_REMOTING);
     private final ServerBootstrap serverBootstrap;
     private final EventLoopGroup eventLoopGroupSelector;
-    // boosGroup用于轮询并处理selector连接事件,通常1个就够
     private final EventLoopGroup eventLoopGroupBoss;
     private final NettyServerConfig nettyServerConfig;
 
@@ -76,7 +75,6 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
 
     private final Timer timer = new Timer("ServerHouseKeepingService", true);
     private DefaultEventExecutorGroup defaultEventExecutorGroup;
-
 
     private int port = 0;
 
@@ -95,8 +93,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         this(nettyServerConfig, null);
     }
 
-    public NettyRemotingServer(final NettyServerConfig nettyServerConfig,
-        final ChannelEventListener channelEventListener) {
+    public NettyRemotingServer(final NettyServerConfig nettyServerConfig,final ChannelEventListener channelEventListener) {
         super(nettyServerConfig.getServerOnewaySemaphoreValue(), nettyServerConfig.getServerAsyncSemaphoreValue());
         this.serverBootstrap = new ServerBootstrap();
         this.nettyServerConfig = nettyServerConfig;
@@ -117,15 +114,18 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         });
 
         if (useEpoll()) {
+            //boosGroup用于轮询并处理selector连接事件，通常情况下1个线程就够用了
             this.eventLoopGroupBoss = new EpollEventLoopGroup(1, new ThreadFactory() {
+                //保证线程名称唯一性
                 private AtomicInteger threadIndex = new AtomicInteger(0);
 
                 @Override
                 public Thread newThread(Runnable r) {
+                    //线程名称,通过日志可以明确区分属于哪类线程，对日志分析和问题排查非常有利
                     return new Thread(r, String.format("NettyEPOLLBoss_%d", this.threadIndex.incrementAndGet()));
                 }
             });
-
+            //workGroup轮询并处理selector读写事件
             this.eventLoopGroupSelector = new EpollEventLoopGroup(nettyServerConfig.getServerSelectorThreads(), new ThreadFactory() {
                 private AtomicInteger threadIndex = new AtomicInteger(0);
                 private int threadTotal = nettyServerConfig.getServerSelectorThreads();
@@ -194,16 +194,35 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                     return new Thread(r, "NettyServerCodecThread_" + this.threadIndex.incrementAndGet());
                 }
             });
-
+        // 创建共享hadler
         prepareSharableHandlers();
 
         ServerBootstrap childHandler =
             this.serverBootstrap.group(this.eventLoopGroupBoss, this.eventLoopGroupSelector)
                 .channel(useEpoll() ? EpollServerSocketChannel.class : NioServerSocketChannel.class)
+                    //用于指定服务端连接队列长度，当服务器连接处理线程全忙时，已完成三次握手的请求会被临时存放在连接队列中(还没来得及被accept)，
+                    // 队列满后会拒绝新收到的连接请求。默认情况下，该值为200左右，对于连接数不太多的场景，默认值就够了，
+                    // 像常见RPC框架的服务端就没有设置。RocketMq需要支持更高频的连接请求，所以使用了推荐值1024
                 .option(ChannelOption.SO_BACKLOG, 1024)
+                    //TCP四次挥手的最后阶段，主动发起关闭的一端会处于TIME_WAIT状态，该状态下的socket所用端口无法被复用(默认时间2MSL=4分钟)；
+                    // 在服务端客户端架构中，通常是服务端主动发起连接关闭，在大量连接的场景中，无论是频繁关闭连接和新建连接，还是服务端重启，
+                    // 都需要端口资源，4分钟太长了，不能忍。SO_REUSEADDR=true就是通知内核，如果端口忙，但socket状态是TIME_WAIT，可以立即重用端口；
+                    // 因为端口资源限制，该配置算是服务端必备的了
                 .option(ChannelOption.SO_REUSEADDR, true)
+                    //TCP有内置的连接保活机制，保活并不是把挂掉的连接整活，而是只留下有效的连接，及时释放无效连接资源；
+                    // 由于netty提供的IdleStateHandler可以非常方便、灵活的实现心跳维持和会话管理，所以一般不需要使用TCP自带的
                 .option(ChannelOption.SO_KEEPALIVE, false)
+                    //TCP/IP协议中针对TCP默认开启了Nagle算法，会对包的发送进行限制，至少满足下面任意一个条件才可以发出，
+                    // 1.写缓冲区的字节数超过指定阈值   2.之前发出的所有包都已收到ack
+                    //其好处是减少网络开销和发送接收两端的压力，坏处就是存在发送延时，对于延时敏感型、数据传输量比较小的应用，应该选择关闭Nagle算法，
+                    // 关闭方式为设置TCP_NODELAY=true
                 .childOption(ChannelOption.TCP_NODELAY, true)
+                    //SO_SNDBUF与SO_RCVBUF：每个socket都有一个receive缓冲区和send缓冲区，在调用socket的read send时，其实仅仅是操作缓冲区，
+                    // read仅仅从reveive缓冲区拿数据，拿不到就阻塞等待对端数据从网络过来。
+                    // send仅仅将数据放入send缓冲区，缓冲区满了就等待；
+                    // 对于TCP协议来说，由于有滑动窗口控制，如果接收端read缓冲区已满，还未来的及处理，则会在回复发送端的ack中缩小窗口值，
+                    // 提示发送端降低发送速度，甚至暂时不发；
+                    // 缓冲区的大小影响的是两端发送接收的速度，没有一个标准的参考值，实际生产时应该由测试结果决定，通常情况下，默认的值就够了，也就是不需要设置；
                 .childOption(ChannelOption.SO_SNDBUF, nettyServerConfig.getServerSocketSndBufSize())
                 .childOption(ChannelOption.SO_RCVBUF, nettyServerConfig.getServerSocketRcvBufSize())
                 .localAddress(new InetSocketAddress(this.nettyServerConfig.getListenPort()))
@@ -215,6 +234,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
                             .addLast(defaultEventExecutorGroup,
                                 encoder,                // 编码
                                 new NettyDecoder(),     // 解码
+                                    //read事件、write事件 、read+write事件的检测周期
                                 new IdleStateHandler(0, 0, nettyServerConfig.getServerChannelMaxIdleTimeSeconds()),
                                 connectionManageHandler,
                                 serverHandler
@@ -353,7 +373,7 @@ public class NettyRemotingServer extends NettyRemotingAbstract implements Remoti
         serverHandler = new NettyServerHandler();
     }
 
-    @ChannelHandler.Sharable
+    @ChannelHandler.Sharable //可共享标记注解
     class HandshakeHandler extends SimpleChannelInboundHandler<ByteBuf> {
 
         private final TlsMode tlsMode;

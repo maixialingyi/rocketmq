@@ -668,8 +668,7 @@ public class CommitLog {
             switch (result.getStatus()) {
                 case PUT_OK:
                     break;
-                    //文件写满,就创建一个新文件,重新消息
-                case END_OF_FILE:
+                case END_OF_FILE:    //文件写满,就创建一个新文件,重新消息
                     unlockMappedFile = mappedFile;
                     // Create a new file, re-write the message
                     mappedFile = this.mappedFileQueue.getLastMappedFile(0);
@@ -1386,9 +1385,9 @@ public class CommitLog {
         public AppendMessageResult doAppend(final long fileFromOffset, final ByteBuffer byteBuffer, final int maxBlank,
             final MessageExtBatch messageExtBatch, PutMessageContext putMessageContext) {
             byteBuffer.mark();
-            //physical offset
+            //physical offset  物理偏移量
             long wroteOffset = fileFromOffset + byteBuffer.position();
-            // Record ConsumeQueue information
+            // Record ConsumeQueue information  记录队列信息
             String key = putMessageContext.getTopicQueueTableKey();
             Long queueOffset = CommitLog.this.topicQueueTable.get(key);
             if (null == queueOffset) {

@@ -314,7 +314,7 @@ public interface MessageStore {
 
     /**
      * Get number of the bytes that have been stored in commit log and not yet dispatched to consume queue.
-     *
+     * 获取已存储在提交日志中但尚未分派到使用队列的字节数
      * @return number of the bytes to dispatch.
      */
     long dispatchBehindBytes();
