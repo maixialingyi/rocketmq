@@ -228,9 +228,10 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             default:
                 break;
         }
-
+        // 启动发送一次心跳 向所有的Broker发送心跳信息
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
 
+        // 定时扫描生产端 超时请求
         this.startScheduledTask();
 
     }
@@ -576,17 +577,19 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         long beginTimestampFirst = System.currentTimeMillis();
         long beginTimestampPrev = beginTimestampFirst;
         long endTimestamp = beginTimestampFirst;
-        //生产者获取Topic的公开信息,注意下有哪些信息 重点关注怎么选择MessageQueue
+        //从nameserver获取Topic的公开信息,没有topic,使用TBW102
         TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic());
         if (topicPublishInfo != null && topicPublishInfo.ok()) {
             boolean callTimeout = false;
             MessageQueue mq = null;
             Exception exception = null;
             SendResult sendResult = null;
+            //同步重试次数3  其他1
             int timesTotal = communicationMode == CommunicationMode.SYNC ? 1 + this.defaultMQProducer.getRetryTimesWhenSendFailed() : 1;
             int times = 0;
             String[] brokersSent = new String[timesTotal];
             for (; times < timesTotal; times++) { //重试次数
+                // todo 是否是顺序消息 mq!= null
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
                 //Producer计算把消息发到那个MessageQueue中
                 MessageQueue mqSelected = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
@@ -738,6 +741,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         //构建请求参数
         SendMessageContext context = null;
         if (brokerAddr != null) {
+            // VIP channel
             brokerAddr = MixAll.brokerVIPChannel(this.defaultMQProducer.isSendMessageWithVIPChannel(), brokerAddr);
 
             byte[] prevBody = msg.getBody();

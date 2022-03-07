@@ -228,19 +228,23 @@ public class MQClientInstance {
                 case CREATE_JUST:
                     this.serviceState = ServiceState.START_FAILED;
                     // If not specified,looking address from name server
+                    // 未配置nameserver  获取nameService地址
                     if (null == this.clientConfig.getNamesrvAddr()) {
                         this.mQClientAPIImpl.fetchNameServerAddr();
                     }
                     // Start request-response channel
                     this.mQClientAPIImpl.start();
                     // Start various schedule tasks
+                     // 初始化各类定时任务
                     this.startScheduledTask();
-                    // Start pull service
+                    // 开启守护线程  pullService , 针对consumer
                     this.pullMessageService.start();
-                    // Start rebalance service
-                    // 消费端负载均衡,消费端启动就分配了Queue      生产端负载均衡是发送时才做的
+                    // 启动RebalanceService服务，针对consumer 消费端负载均衡,消费端启动就分配了Queue
+                    // 生产端负载均衡是发送时才做的
                     this.rebalanceService.start();
                     // Start push service
+                    // 启动一个groupName为CLIENT_INNER_PRODUCER的DefaultMQProducer，
+                    // 用于将消费失败的消息发回broker,消息的topic格式为%RETRY%ConsumerGroupName。
                     this.defaultMQProducer.getDefaultMQProducerImpl().start(false);
                     log.info("the client factory [{}] start OK", this.clientId);
                     this.serviceState = ServiceState.RUNNING;
@@ -260,6 +264,7 @@ public class MQClientInstance {
                 @Override
                 public void run() {
                     try {
+                        // 更新NameServer地址
                         MQClientInstance.this.mQClientAPIImpl.fetchNameServerAddr();
                     } catch (Exception e) {
                         log.error("ScheduledTask fetchNameServerAddr exception", e);
@@ -273,6 +278,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    // 从nameService更新Topic路由信息
                     MQClientInstance.this.updateTopicRouteInfoFromNameServer();
                 } catch (Exception e) {
                     log.error("ScheduledTask updateTopicRouteInfoFromNameServer exception", e);
@@ -285,7 +291,9 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    // 清理挂掉的broker
                     MQClientInstance.this.cleanOfflineBroker();
+                    // 向broker发送心跳信息
                     MQClientInstance.this.sendHeartbeatToAllBrokerWithLock();
                 } catch (Exception e) {
                     log.error("ScheduledTask sendHeartbeatToAllBroker exception", e);
@@ -298,6 +306,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    // 持久化consumerOffset，保存消费者的Offset
                     MQClientInstance.this.persistAllConsumerOffset();
                 } catch (Exception e) {
                     log.error("ScheduledTask persistAllConsumerOffset exception", e);
@@ -310,6 +319,7 @@ public class MQClientInstance {
             @Override
             public void run() {
                 try {
+                    // 调整消费线程池
                     MQClientInstance.this.adjustThreadPool();
                 } catch (Exception e) {
                     log.error("ScheduledTask adjustThreadPool exception", e);
@@ -469,6 +479,7 @@ public class MQClientInstance {
         if (this.lockHeartbeat.tryLock()) {
             try {
                 this.sendHeartbeatToAllBroker();
+                //向Filter过滤服务器发送REGISTER_MESSAGE_FILTER_CLASS请求码，更新过滤服务器中的Filterclass文件
                 this.uploadFilterClassSource();
             } catch (final Exception e) {
                 log.error("sendHeartbeatToAllBroker exception", e);
@@ -532,6 +543,7 @@ public class MQClientInstance {
         final HeartbeatData heartbeatData = this.prepareHeartbeatData();
         final boolean producerEmpty = heartbeatData.getProducerDataSet().isEmpty();
         final boolean consumerEmpty = heartbeatData.getConsumerDataSet().isEmpty();
+        // 没有生产端 也没有消费端  不发心跳
         if (producerEmpty && consumerEmpty) {
             log.warn("sending heartbeat, but no consumer and no producer. [{}]", this.clientId);
             return;

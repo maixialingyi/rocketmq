@@ -56,7 +56,7 @@ public class MQFaultStrategy {
     }
     //producer选择MessageQueue
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
-        //默认关闭,broker故障延迟机制,表示一种发送消息失败后一定时间内不在同一个Queue重复发送的机制
+        //默认关闭,broker故障延迟机制,表示发送消息失败后一定时间内不在同一个Queue重复发送的机制
         if (this.sendLatencyFaultEnable) {
             try {
                 //算法: 自增 后取模  只有这一种算法

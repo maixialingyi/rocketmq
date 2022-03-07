@@ -32,21 +32,23 @@ public class ProducerTest {
          * 或者，您可以通过导出环境变量NAMESRV_ADDR来指定名称服务器地址
          * 采用配置环境变量方式
          */
-        producer.setNamesrvAddr("127.0.0.1:9876");
+        //producer.setNamesrvAddr("127.0.0.1:9876");
 
         producer.start();
 
         try {
-            Message msg = new Message("jsy_test_topic" /* Topic */,
+            Message msg = new Message("jsy_test_topic1" /* Topic */,
                     "tag_one" /* Tag */,
                     ("jsy_test_topic tag_one 数据内容").getBytes(RemotingHelper.DEFAULT_CHARSET) /* Message body */
             );
+            msg.setDelayTimeLevel(1);  //延时消设置
             SendResult sendResult = producer.send(msg);
+            //producer.sendOneway(msg);
             System.out.printf("%s%n", sendResult);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        producer.shutdown();
-        System.exit(0);
+        //producer.shutdown();
+        //System.exit(0);
     }
 }
